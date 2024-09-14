@@ -1,0 +1,111 @@
+---
+title: "Project1_776"
+author: "Ritesh Bachar"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+```{r setting up background}
+## Installing the tidyverse package
+if (!require("tidyverse", quietly = TRUE)) {
+    install.packages("tidyverse")
+}
+
+library("tidyverse")
+
+## Install the tidytuesdayR package if you don't have it
+if (!require("tidytuesdayR", quietly = TRUE)) {
+    install.packages("tidytuesdayR")
+}
+
+## Install the remotes package if you don't have it
+if (!require("remotes", quietly = TRUE)) {
+    install.packages("remotes")
+}
+## Install the tidytuesdayR package (from GitHub) if you don't have it
+if (!require("tidytuesdayR", quietly = TRUE)) {
+    remotes::install_github("dslc-io/tidytuesdayR")
+}
+
+##downloading the data
+tuesdata <- tidytuesdayR::tt_load("2022-01-18")
+chocolate <- tuesdata$chocolate
+
+##avioding re-downloading the data
+library("here")
+library("tidyverse")
+
+# testing if a directory named "data" exists locally
+if (!dir.exists(here("data"))) {
+    dir.create(here("data"))
+}
+
+# saves data only once (not each time you knit a R Markdown)
+if (!file.exists(here("data", "chocolate.RDS"))) {
+    url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+    chocolate <- readr::read_csv(url_csv)
+
+    # save the file to RDS objects
+    saveRDS(chocolate, file = here("data", "chocolate.RDS"))
+}
+
+##reading the rds file locally
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+##taking a glimpse at the data
+glimpse(chocolate)
+
+```
+
+## Part 1- Exploring data
+
+```{r part1 q1}
+##1. Make a histogram of the rating scores to visualize the overall distribution of scores. Change the number of bins from the default to 10, 15, 20, and 25. Pick on the one that you think looks the best. Explain what the difference is when you change the number of bins and explain why you picked the one you did.
+
+library(ggplot2)
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram()+
+  ggtitle("Ratings with default bin")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 10)+
+  ggtitle("Ratings with bin 10")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 15)+
+  ggtitle("Ratings with bin 15")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 20)+
+  ggtitle("Ratings with bin 20")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 25)+
+  ggtitle("Ratings with bin 25")
+
+```
+
+#I think the default one looks best. The histogram with the default bins makes sense as the counts of the ratings can be observed whereas for the 10,15,20 and 25 values the chart area is just filled with a black box.
+
+```{r part1 q2}
+##2. Consider the countries where the beans originated from. How many reviews come from each country of bean origin?
+library(dplyr)
+library(knitr)
+review_from_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarize(review = n())
+
+print(review_from_country)
+
+# Print the table using kable
+kable(review_from_country, caption = "Table of Reviews by Country")
+```
+
