@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Background
 
 ```{r setting up background}
+
 ## Installing the tidyverse package
 if (!require("tidyverse", quietly = TRUE)) {
     install.packages("tidyverse")
@@ -67,7 +68,7 @@ glimpse(chocolate)
 ## Part 1- Exploring data
 
 ```{r part1 q1}
-##1. Make a histogram of the rating scores to visualize the overall distribution of scores. Change the number of bins from the default to 10, 15, 20, and 25. Pick on the one that you think looks the best. Explain what the difference is when you change the number of bins and explain why you picked the one you did.
+## 1. Make a histogram of the rating scores to visualize the overall distribution of scores. Change the number of bins from the default to 10, 15, 20, and 25. Pick on the one that you think looks the best. Explain what the difference is when you change the number of bins and explain why you picked the one you did.
 
 library(ggplot2)
 
@@ -96,16 +97,165 @@ ggplot(chocolate, aes(x=rating))+
 #I think the default one looks best. The histogram with the default bins makes sense as the counts of the ratings can be observed whereas for the 10,15,20 and 25 values the chart area is just filled with a black box.
 
 ```{r part1 q2}
-##2. Consider the countries where the beans originated from. How many reviews come from each country of bean origin?
+## 2. Consider the countries where the beans originated from. How many reviews come from each country of bean origin?
 library(dplyr)
 library(knitr)
 review_from_country <- chocolate %>%
   group_by(country_of_bean_origin) %>%
   summarize(review = n())
 
-print(review_from_country)
-
-# Print the table using kable
+# Printing the table using kable
 kable(review_from_country, caption = "Table of Reviews by Country")
 ```
+
+```{r part1 q3}
+## 3. What is average rating scores from reviews of chocolate bars that have Ecuador as country_of_bean_origin in this dataset? For this same set of reviews, also calculate (1) the total number of reviews and (2) the standard deviation of the rating scores. Your answer should be a new data frame with these three summary statistics in three columns. Label the name of these columns mean, sd, and total.
+
+q3_ecuador <- filter(chocolate, country_of_bean_origin == "Ecuador")
+
+q3_df <- q3_ecuador%>%
+  summarise(
+ 'mean' =  mean(rating),
+ 'sd' = sd(rating),
+ 'total' = n(),
+)
+
+print(q3_df)
+
+
+```
+
+```{r part1 q4}
+## 4. Which company location makes the best chocolate (or has the highest ratings on average) with beans from Ecuador?
+
+q4_df <- q3_ecuador%>%
+  arrange(desc(rating))
+
+best_rating <- filter(q4_df, rating == 4)                 #extracting from row
+best_company <- select(best_rating, company_location)     #extracting from column
+print(best_company)
+
+```
+
+```{r part1 q5}
+## 5. Calculate the average rating across all country of origins for beans. Which top 3 countries (for bean origin) have the highest ratings on average?
+
+bean_origin <- chocolate %>%
+  select(country_of_bean_origin, rating)
+
+average_ratings <- bean_origin %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(avg_rating = mean(rating))
+
+average_ratings_descending <- average_ratings%>%
+  arrange(desc(avg_rating))
+
+top_rating <- filter(average_ratings_descending, avg_rating >= 3.5)                 #extracting from row
+top_country <- select(top_rating, country_of_bean_origin)     #extracting from column
+print(top_country)
+
+```
+
+```{r part1 q6}
+## 6. Following up on the previous problem, now remove any countries of bean origins that have less than 10 chocolate bar reviews. Now, which top 3 countries have the highest ratings on average?
+
+q6 <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarize(
+    mean_rating = mean (rating),
+    review_date = n()
+  )
+
+q6_filtered <- q6 %>%
+  filter(review_date >= 10)
+  
+top_country_rating <- q6_filtered %>%
+  arrange(desc(mean_rating)) %>%
+  top_n(3, wt = mean_rating)
+
+print (top_country_rating)
+
+```
+
+```{r part1 q7}
+## 7. For this last part, let’s explore the relationship between percent chocolate and ratings. Use the functions in dplyr, tidyr, and lubridate to perform the following steps to the chocolate dataset:
+
+q7 <- chocolate %>%
+  select (country_of_bean_origin, cocoa_percent, review_date)
+  
+
+  
+  
+  
+  
+```
+
+
+```{r part2 joining the datasets}
+#reading chocolate dataset
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#creating a new column called continent in our chocolate dataset
+
+#renaming country_of_bean_origin to have a match for join
+library(dplyr)
+
+chocolate_renamed <- rename(chocolate, country = country_of_bean_origin)
+head(chocolate_renamed)
+
+#creating new table with continent column added to chocolate dataset
+install.packages("gapminder")
+library(gapminder)
+gapminder_unfiltered
+
+tab <- left_join(chocolate_renamed, gapminder_unfiltered, by = "country") |>
+  select(-year, -lifeExp, -pop, -gdpPercap)
+head(tab)
+
+#removing blend from country
+tab_f1 <- filter(tab, country != "Blend")  
+
+#filtering by <=10 reviews
+tab_f2 <- tab_f1 %>% 
+  group_by(country) %>%
+  mutate(reviews_count = n()) %>%
+  filter(reviews_count <=10)
+
+#specifying continent for NAs
+
+tab_final <- tab_f2 %>% 
+  mutate(continent_new = case_when
+         (country == "Burma" ~ "Asia",
+      country == "Ivory Coast" ~ "Africa",          country == "DR Congo" ~ "Africa",
+        country == "Principe" ~ "Africa",
+country == "Sao Tome & Principe" ~ "Africa",
+  country == "St.Lucia" ~ "Americas", 
+ country == "Sulawesi" ~ "Asia",
+country == "St.Vincent-Grenadines" ~ "Americas",  
+    country == "Sumatra" ~ "Asia",
+    country == "Tobago" ~ "Americas",
+     .default= "Americas"))
+
+#Making a set of violin plots with ratings on the y-axis and continents on the x-axis
+
+library(ggplot2)
+ggplot(tab_final, aes(x=continent_new, y=rating)) + 
+  geom_violin(fill="blue") +
+  labs(title= "Chocolate Ratings by Continent",
+       x= "Continent",
+       y = "Rating")
+```
+
+
+
+
+
+
+
+
+
+
+
+
 

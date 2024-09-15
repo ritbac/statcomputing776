@@ -1,0 +1,129 @@
+---
+title: "Project 1"
+author: "Cathy Cooper"
+date: "2024-09-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Background**
+
+```{r}
+library("here")
+library("tidyverse")
+
+# tests if a directory named "data" exists locally
+if (!dir.exists(here("data"))) {
+  dir.create(here("data"))
+}
+
+# saves data only once (not each time you knit a R Markdown)
+if (!file.exists(here("data", "chocolate.RDS"))) {
+  url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+  chocolate <- readr::read_csv(url_csv)
+  
+  # save the file to RDS objects
+  saveRDS(chocolate, file = here("data", "chocolate.RDS"))
+}
+
+#read dataset
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#get a glimspe at the data
+glimpse(chocolate)
+
+```
+
+**Part 1: Explore Data**
+
+```{r}
+#histogram using base R
+library(ggplot2)
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram()+
+  ggtitle("Ratings with default bin")
+
+library(ggplot2)
+ggplot(chocolate, aes(x= rating))+
+  geom_histogram(binwidth = 10)
+ggtitle("Ratings with bin 10")
+
+library(ggplot2)
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 15)+
+  ggtitle("Ratings with bin 15")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 20)+
+  ggtitle("Ratings with bin 20")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 25)+
+  ggtitle("Ratings with bin 25")
+
+```
+
+**Part 2: Join two datasets together
+
+```{r}
+#read chocolate dataset
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#create a new column called continent in our chocolate dataset
+
+#rename country_of_bean_origin to have a match for join
+library(dplyr)
+
+chocolate <- rename(chocolate, country = country_of_bean_origin)
+
+head(chocolate)
+
+#create new table with continent column added to chocolate dataset
+
+library(gapminder)
+gapminder_unfiltered
+
+tab <- left_join(chocolate, gapminder_unfiltered, by = "country") |>
+  select(-year, -lifeExp, -pop, -gdpPercap)
+head(tab)
+
+#remove blend from country
+tab.f <- filter(tab, country != "Blend")  
+
+#filter by <=10 reviews
+tab.f2 <- tab.f %>% 
+  group_by(country) %>%
+  mutate(reviews_count = n()) %>%
+  filter(reviews_count <=10)
+
+#specify continent for NAs
+
+tab_final <- tab.f2 %>% 
+  mutate(continent_new = case_when
+         (country == "Burma" ~ "Asia",
+      country == "Ivory Coast" ~ "Africa",          country == "DR Congo" ~ "Africa",
+        country == "Principe" ~ "Africa",
+country == "Sao Tome & Principe" ~ "Africa",
+  country == "St.Lucia" ~ "Americas", 
+ country == "Sulawesi" ~ "Asia",
+country == "St.Vincent-Grenadines" ~ "Americas",  
+    country == "Sumatra" ~ "Asia",
+    country == "Tobago" ~ "Americas",
+     .default= "Americas"))
+#Make a set of violin plots with ratings on the y-axis and continents on the x-axis
+
+library(ggplot2)
+ggplot(tab_final, aes(x=continent_new, y=rating)) + 
+  geom_violin(fill="blue") +
+  labs(title= "Chocolate Ratings by Continent",
+       x= "Continent",
+       y = "Rating")
+```
+
+** Part 3:
