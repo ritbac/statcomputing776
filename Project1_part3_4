@@ -1,0 +1,226 @@
+---
+title: "Project 1"
+author: "Cathy Cooper"
+date: "2024-09-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Background**
+
+```{r}
+library("here")
+library("tidyverse")
+
+# tests if a directory named "data" exists locally
+if (!dir.exists(here("data"))) {
+  dir.create(here("data"))
+}
+
+# saves data only once (not each time you knit a R Markdown)
+if (!file.exists(here("data", "chocolate.RDS"))) {
+  url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+  chocolate <- readr::read_csv(url_csv)
+  
+  # save the file to RDS objects
+  saveRDS(chocolate, file = here("data", "chocolate.RDS"))
+}
+
+#read dataset
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#get a glimspe at the data
+glimpse(chocolate)
+
+```
+
+**Part 1: Explore Data**
+
+```{r}
+#histogram using base R
+library(ggplot2)
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram()+
+  ggtitle("Ratings with default bin")
+
+library(ggplot2)
+ggplot(chocolate, aes(x= rating))+
+  geom_histogram(binwidth = 10)
+ggtitle("Ratings with bin 10")
+
+library(ggplot2)
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 15)+
+  ggtitle("Ratings with bin 15")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 20)+
+  ggtitle("Ratings with bin 20")
+
+ggplot(chocolate, aes(x=rating))+
+  geom_histogram(binwidth = 25)+
+  ggtitle("Ratings with bin 25")
+
+```
+
+**Part 2: Join two datasets together**
+
+```{r}
+#read chocolate dataset
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#Load Libraries
+library(tidyverse)
+library(gapminder)
+
+#Use gapminder unfiltered
+gap_data <- gapminder::gapminder_unfiltered
+
+#rename country_of_bean_origin
+chocolate <- rename(chocolate, country = country_of_bean_origin)
+
+head(chocolate)
+
+#filter gapminder dataset
+gap_data <- gap_data %>%
+  select(country, continent) %>%
+  distinct()
+
+#left join datasets
+choc_2 <- chocolate %>%
+  left_join(gap_data, by= "country")
+
+#remove blend from country
+choc_2.f <- filter(choc_2, country != "Blend")  
+
+#filter by >=10 reviews
+choc_2.f <- choc_2.f %>% 
+  group_by(country) %>%
+  mutate(reviews_count = n()) %>%
+  filter(reviews_count >=10)
+
+#check for NA
+choc_2_na <- choc_2.f %>%
+  filter(is.na(continent)) %>%
+select(country,continent) %>%
+  distinct()
+  
+#specify continent for NA
+
+choc_2_final <- choc_2.f %>% 
+  mutate(continent_new = case_when
+         (country == "U.S.A." ~ "Americas",
+        country == "Congo" ~ "Africa",
+country == "Sao Tome" ~ "Africa",
+  country == "St. Lucia" ~ "Americas", 
+    country == "Trinidad" ~ "Americas",
+     TRUE ~ continent))
+
+#Make a set of violin plots with ratings on the y-axis and continents on the x-axis
+
+library(ggplot2)
+ggplot(choc_2_final, aes(x=continent_new, y=rating)) +
+  geom_violin(aes(fill=continent), alpha= 0.6) +
+  labs(title= "Chocolate Ratings by Continent",
+       x= "Continent",
+       y = "Rating")
+
+```
+
+**Part 3: Convert wide data into long data**
+
+```{r}
+#start with new chocolate tibble
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+
+#load libraries
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+#assign NA as 0
+
+choc_3 <- chocolate %>%
+  mutate(ingr_new = case_when(is.na(ingredients) ~ "0",
+           TRUE ~ ingredients)
+  )
+
+# Create binary columns
+choc_3 <- choc_3 %>%
+  mutate(
+    beans = ifelse(str_detect(ingr_new, "B"), 1, 0),
+    sugar = ifelse(str_detect(ingr_new, "S"), 1, 0),
+    cocoa_butter = ifelse(str_detect(ingr_new, "C"), 1, 0),
+    vanilla = ifelse(str_detect(ingr_new, "V"), 1, 0),
+    letchin = ifelse(str_detect(ingr_new, "L"), 1, 0),
+    salt = ifelse(str_detect(ingr_new, "Sa"), 1, 0),
+    char_cocoa = ifelse(str_detect(most_memorable_characteristics, "cocoa"), 1, 0),
+    char_sweet = ifelse(str_detect(most_memorable_characteristics, "sweet"), 1, 0),
+    char_nutty = ifelse(str_detect(most_memorable_characteristics, "nutty"), 1, 0),
+    char_creamy = ifelse(str_detect(most_memorable_characteristics, "creamy"), 1, 0),
+    char_roasty = ifelse(str_detect(most_memorable_characteristics, "roasty"), 1, 0),
+    char_earthy = ifelse(str_detect(most_memorable_characteristics, "earthy"), 1, 0)
+  )
+
+#calculate mean values by year
+mean_by_year <- choc_3 %>%
+  group_by(review_date) %>%
+  summarize(
+    beans= mean(beans, na.rm = TRUE),
+    sugar= mean(sugar, na.rm = TRUE),
+    cocoa_butter= mean(cocoa_butter, na.rm = TRUE),
+    vanilla= mean(vanilla, na.rm = TRUE),
+    letchin= mean(letchin, na.rm = TRUE),
+    salt= mean(salt, na.rm = TRUE),
+    char_cocoa= mean(char_cocoa, na.rm = TRUE),
+    char_sweet= mean(char_sweet, na.rm = TRUE),
+    char_nutty= mean(char_nutty, na.rm = TRUE),
+    char_roasty= mean(char_roasty, na.rm = TRUE),
+    char_earthy= mean(char_earthy, na.rm = TRUE),
+    char_creamy= mean(char_creamy, na.rm = TRUE))
+
+#convert to from wide to long
+long_format <- mean_by_year %>%
+  pivot_longer(
+    cols = c("beans":"char_creamy"),
+    names_to = "feature",
+    values_to = "mean_score"
+  )
+head(long_format, n=10)
+```
+
+**Part 4: Data visualization**
+
+```{r}
+#Create a plot of long data
+library(ggplot2)
+
+ggplot(long_format, aes(x = review_date, y = mean_score)) +
+  geom_point(color = "blue", size = 2) +  
+  geom_smooth(method = "loess", color = "red") +
+  facet_wrap(~ feature, scales = "free_y") +  
+  labs(
+    title = "Summary of Chocolate Review Over Time",
+    subtitle = "Shows mean scores for various features in chocolate reviews from 2006 to 2021.",
+    x = "Year of Review",
+    y = "Mean Score",
+    caption = "Created by Cathy Cooper"
+  )  +  
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Facet labels
+    axis.title = element_text(size = 12, face = "bold"),  # Axis titles
+    axis.text = element_text(size = 10),  # Axis text
+    plot.title = element_text(size = 14, face = "bold"),  # Plot title
+    plot.subtitle = element_text(size = 12),  # Plot subtitle
+    plot.caption = element_text(size = 10, face = "italic"),  # Caption
+    panel.background = element_rect(fill = "lightgray")  # Background color
+  )
+
+```
