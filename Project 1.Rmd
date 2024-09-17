@@ -61,7 +61,7 @@ glimpse(chocolate)
 
 ```
 
-## Part 1- Exploring data
+## Part 1- Explore data
 
 ```{r part1 q1}
 ## 1. Make a histogram of the rating scores to visualize the overall distribution of scores. Change the number of bins from the default to 10, 15, 20, and 25. Pick on the one that you think looks the best. Explain what the difference is when you change the number of bins and explain why you picked the one you did.
@@ -117,7 +117,6 @@ q3_df <- q3_ecuador%>%
 )
 
 print(q3_df)
-
 
 ```
 
@@ -176,57 +175,122 @@ print (top_country_rating)
 ```{r part1 q7}
 ## 7. For this last part, let’s explore the relationship between percent chocolate and ratings. Use the functions in dplyr, tidyr, and lubridate to perform the following steps to the chocolate dataset:
 
+q7 <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarize(
+    mean_rating = mean (rating),
+    review_date = n()
+  )
 
+q7_filtered50 <- q6 %>%
+  filter(review_date >= 50)  
   
+# adding a new column 'choc_percent_group' to categorize the chocolate percentages
+chocolate_p7q3 <- chocolate %>%
+  mutate(choc_percent_numeric = as.numeric(substr(cocoa_percent, 1, nchar(cocoa_percent) - 1)),
+      choc_percent_group = case_when(
+      choc_percent_numeric < 60 ~ "<60%",
+      choc_percent_numeric >= 60 & choc_percent_numeric < 70 ~ "60-69%",
+      choc_percent_numeric >= 70 & choc_percent_numeric < 90 ~ "70-89%",
+      choc_percent_numeric >= 90 ~ ">=90%"
+    )
+  )
 
-  
-  
-  
-  
+# using forcats package
+library(forcats)
+# Reorder the factor levels of 'choc_percent_group'
+chocolate_p7q3 <- chocolate_p7q3 %>%
+  mutate(
+    choc_percent_group = fct_relevel(choc_percent_group, "<60%", "60-69%", "70-89%", ">=90%")
+  )
+
+levels(chocolate_p7q3$choc_percent_group)
+
+#creating boxplot for each country
+box_plot <- ggplot(chocolate_p7q3, aes(x = choc_percent_group, y = rating)) +
+  geom_boxplot() +
+  facet_wrap(~ country_of_bean_origin) +
+  labs(
+    x = "Chocolate Percentages",
+    y = "Rating",
+    title = "Boxplots of Ratings by Chocolate Percentages by Country"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(box_plot) 
+ 
 ```
+
+## Part 2- Join two datasets together
 
 ```{r part2 joining the datasets}
 ## 1.joining chocolate with gapminder and creating continent column
-install.packages("gapminder")
 library(gapminder)
-gapminder_unfiltered
+
+gap_unfiltered <- gapminder::gapminder_unfiltered
 
 chocolate_renamed <- rename(chocolate, country = country_of_bean_origin)
 head(chocolate_renamed)
 
-Chocolate_continet <- left_join(chocolate_renamed, gapminder_unfiltered, by = "country") %>%
-  select(-year, -lifeExp, -pop, -gdpPercap)
+#filtering gapminder dataset
+gap_unfiltered <- gap_unfiltered %>%
+  select(country, continent) %>%
+  distinct()
 
-## keeping reviews with atleast 10
-Chocolate_continet_10reviews <- Chocolate_continet %>% 
+#using left join to merge datasets
+choc_joined <- chocolate_renamed %>%
+  left_join(gap_unfiltered, by= "country")
+
+#removing blend from country
+choc_joined_noblend <- filter(choc_joined, country != "Blend")
+
+#filtering by at least 10 reviews
+choc_joined_noblend <- choc_joined_noblend %>% 
   group_by(country) %>%
   mutate(reviews_count = n()) %>%
   filter(reviews_count >=10)
 
-##removing blend
-Chocolate_continet_noblend <- filter(Chocolate_continet_10reviews, country != "Blend") 
+missing_values <- sum(is.na(choc_joined_noblend$continent))
 
-is.na(Chocolate_continet_noblend$continent)
+cat("Number of missing values in 'continent':", missing_values)
 
-## violin plot
+# Filter the rows where 'continent' is missing and select the 'country' column
+countries_with_missing_continent <- choc_joined_noblend[is.na(choc_joined_noblend$continent), "country"]
+
+# Display the corresponding countries
+countries_with_missing_continent
+
+# Creating a vector for country-to-continent mapping
+country_to_continent <- c(
+  "U.S.A." = "Americas",
+  "Congo" = "Africa",
+  "Sao Tome" = "Africa",
+  "St. Lucia" = "Americas",
+  "Trinidad" = "Americas"
+)
+
+#inserting the missing continents
+choc_joined_noblend$continent[is.na(choc_joined_noblend$continent)] <- country_to_continent[choc_joined_noblend$country[is.na(choc_joined_noblend$continent)]]
+
+# Checking if missing values are filled
+sum(is.na(choc_joined_noblend$continent))
+
+#creating the violin plots
 library(ggplot2)
-ggplot(Chocolate_continet_noblend, aes(x=continent, y=rating)) + 
-  geom_violin(fill="aquamarine") +
+violin_plot <- ggplot(choc_joined_noblend, aes(x=continent, y=rating)) +
+  geom_violin(aes(fill=continent), alpha= 0.5) +
   labs(title= "Chocolate Ratings by Continent",
-       x= "Continent",
+       x= "Continents",
        y = "Rating")
 
-
-
-
-
-
-
+print(violin_plot)
 
 ```
 
+## Part 3- Convert wide data into long data
 
-```{r part3}
+```{r part3 converting wide data into long data}
 #start with new chocolate tibble
 chocolate <- readRDS(here("data", "chocolate.RDS"))
 as_tibble(chocolate)
@@ -236,22 +300,22 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 
-#assign NA as 0
+#assigning NA as 0
 
-choc_3 <- chocolate %>%
-  mutate(ingr_new = case_when(is.na(ingredients) ~ "0",
+choc_pt3 <- chocolate %>%
+  mutate(ingredients_new = case_when(is.na(ingredients) ~ "0",
            TRUE ~ ingredients)
   )
 
-# Create binary columns
-choc_3 <- choc_3 %>%
+# Creating binary columns
+choc_pt3_added <- choc_pt3 %>%
   mutate(
-    beans = ifelse(str_detect(ingr_new, "B"), 1, 0),
-    sugar = ifelse(str_detect(ingr_new, "S"), 1, 0),
-    cocoa_butter = ifelse(str_detect(ingr_new, "C"), 1, 0),
-    vanilla = ifelse(str_detect(ingr_new, "V"), 1, 0),
-    letchin = ifelse(str_detect(ingr_new, "L"), 1, 0),
-    salt = ifelse(str_detect(ingr_new, "Sa"), 1, 0),
+    beans = ifelse(str_detect(ingredients_new, "beans"), 1, 0),
+    sugar = ifelse(str_detect(ingredients_new, "sugar"), 1, 0),
+    cocoa_butter = ifelse(str_detect(ingredients_new, "cocoa_butter"), 1, 0),
+    vanilla = ifelse(str_detect(ingredients_new, "vanilla"), 1, 0),
+    letchin = ifelse(str_detect(ingredients_new, "letchin"), 1, 0),
+    salt = ifelse(str_detect(ingredients_new, "salt"), 1, 0),
     char_cocoa = ifelse(str_detect(most_memorable_characteristics, "cocoa"), 1, 0),
     char_sweet = ifelse(str_detect(most_memorable_characteristics, "sweet"), 1, 0),
     char_nutty = ifelse(str_detect(most_memorable_characteristics, "nutty"), 1, 0),
@@ -260,8 +324,8 @@ choc_3 <- choc_3 %>%
     char_earthy = ifelse(str_detect(most_memorable_characteristics, "earthy"), 1, 0)
   )
 
-#calculate mean values by year
-mean_by_year <- choc_3 %>%
+#calculating mean values by year
+mean_by_year <- choc_pt3_added %>%
   group_by(review_date) %>%
   summarize(
     beans= mean(beans, na.rm = TRUE),
@@ -277,46 +341,48 @@ mean_by_year <- choc_3 %>%
     char_earthy= mean(char_earthy, na.rm = TRUE),
     char_creamy= mean(char_creamy, na.rm = TRUE))
 
-#convert to from wide to long
-long_format <- mean_by_year %>%
+#converting the data from wide to long
+long_data <- mean_by_year %>%
   pivot_longer(
     cols = c("beans":"char_creamy"),
     names_to = "feature",
     values_to = "mean_score"
   )
-head(long_format, n=10)
 
 ```
 
-```{r part4}
+## Part 4- Data visualization
+
+```{r part4 data visualization}
 #Create a plot of long data
 library(ggplot2)
 
-ggplot(long_format, aes(x = review_date, y = mean_score)) +
-  geom_point(color = "grey", size = 2) +  
-  geom_smooth(method = "loess", color = "cyan") +
+ggplot(long_data, aes(x = review_date, y = mean_score)) +
+  geom_point(color = "blue2", size = 2) +  
+  geom_smooth(method = "loess", color = "red3") +
   facet_wrap(~ feature, scales = "free_y") +  
   labs(
-    title = "Summary of Chocolate Review Over Time",
-    subtitle = "Shows mean scores for various features in chocolate reviews from 2006 to 2021.",
+    title = "Chocolate Reviews Over Time",
+    subtitle = "Shows mean scores for different characteristics in chocolate reviews from 2006 to 2021.",
     x = "Year of Review",
     y = "Mean Score",
-    caption = "Created by Cathy Cooper"
+    caption = "Created by Ritesh Bachar"
   )  +  
   theme(
-    strip.text = element_text(size = 10, face = "bold"),  # Facet labels
+    strip.text = element_text(size = 8, face = "bold"),  # Facet labels
     axis.title = element_text(size = 12, face = "bold"),  # Axis titles
-    axis.text = element_text(size = 10),  # Axis text
-    plot.title = element_text(size = 14, face = "bold"),  # Plot title
-    plot.subtitle = element_text(size = 12),  # Plot subtitle
+    axis.text = element_text(size = 8),  # Axis text
+    plot.title = element_text(size = 12, face = "bold"),  # Plot title
+    plot.subtitle = element_text(size = 10),  # Plot subtitle
     plot.caption = element_text(size = 10, face = "italic"),  # Caption
-    panel.background = element_rect(fill = "lightgray")  # Background color
+    panel.background = element_rect(fill = "beige")  # Background color
   )
 
 ```
 
+## Part 5- Make the worst plot you can!
 
-```{r part5}
+```{r part5 making the worst plot}
 ## 1.plotted rating in the y axis and  review date on the x axis using ggplot2.
 plot1 <- ggplot(chocolate, aes( x = review_date, y = rating)) +
   geom_point()
@@ -370,17 +436,131 @@ print(plot7)
 
 ```
 
-```{r part6}
+## Part 6: Make my plot a better plot!
+
+```{r part6 making a better plot}
+# the original plot
+chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin()
+
+## 1. Adding proper labels and Title to the plot
+Step_1 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin() +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+)
+
+print(Step_1)
+
+## 2. Adding a theme to the plot
+Step_2 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin() +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+) +
+  theme_minimal()
+
+print(Step_2)
+
+## 3. Customizing the appearance of violin plot
+Step_3 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin( fill = "steelblue", color = "black", width = 0.8, trim = FALSE) +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+) +
+  theme_minimal()
+
+print(Step_3)
+
+## 4. Rotating the X axis labels
+Step_4 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin( fill = "steelblue", color = "black", width = 0.8, trim = FALSE) +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(Step_4)
+
+## 5. Adjusting the Y axis limits
+Step_5 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin( fill = "steelblue", color = "black", width = 0.8, trim = FALSE) +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ylim(0,6)
+
+print(Step_5)
+
+## 6. Improving the legend
+Step_6 <- chocolate %>%
+    ggplot(aes(
+        x = as.factor(review_date),
+        y = rating,
+        fill = review_date
+    )) +
+    geom_violin( color = "black", width = 0.8, trim = FALSE) +
+  labs(
+    title = "Distribution of Ratings by Review Date",
+    x = "Review Date",
+    y = "Rating"
+) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "right") +
+  ylim(0,6) +
+  guides(fill = guide_legend(title = "Review Date"))  
+
+print(Step_6)
+
+## 7. creating colorblind friendly plot 
+## Installing colorblindr from GitHub
+remotes::install_github("clauswilke/colorblindr")
+final_plot <- colorblindr::cvd_grid(Step_6)
+
+print(final_plot)
 
 ```
-
-
-
-
-
-
-
-
-
-
-
