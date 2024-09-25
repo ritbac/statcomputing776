@@ -1,0 +1,40 @@
+---
+title: "Project 2"
+author: "Ritesh Bachar"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r part1A}
+Exp <- function(x, k) {
+    # Add your solution here
+}
+# Define the function to compute exponential using series expansion
+exp <- function(x, k) {
+  # Initialize the result with the first term (1)
+  result <- 1
+  
+  # Add the terms of the series expansion up to k terms
+  for (i in 1:k) {
+    result <- result + (x^i) / factorial(i)
+  }
+  
+  return(result)
+}
+
+# Example of usage
+x <- 2
+k <- 3
+exp(x, k)  # This will calculate 1 + x + x^2/2! + x^3/3!
+
+
+```
+
+```{r part1B}
+
+```
+
