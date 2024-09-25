@@ -73,19 +73,19 @@ ggplot(chocolate, aes(x=rating))+
   ggtitle("Ratings with default bin")
 
 ggplot(chocolate, aes(x=rating))+
-  geom_histogram(binwidth = 10)+
+  geom_histogram(bins = 20)+
   ggtitle("Ratings with bin 10")
 
 ggplot(chocolate, aes(x=rating))+
-  geom_histogram(binwidth = 15)+
+  geom_histogram(bins = 15)+
   ggtitle("Ratings with bin 15")
 
 ggplot(chocolate, aes(x=rating))+
-  geom_histogram(binwidth = 20)+
+  geom_histogram(bins = 20)+
   ggtitle("Ratings with bin 20")
 
 ggplot(chocolate, aes(x=rating))+
-  geom_histogram(binwidth = 25)+
+  geom_histogram(bins = 25)+
   ggtitle("Ratings with bin 25")
 
 ```
