@@ -50,8 +50,8 @@ sample_sd <- function(x) {
   {
     N <- length(x)
     avg <- sample_mean(x)
-    vari <- sum((x-avg)^2)
-    sd <- sqrt(1/(N-1)*vari)
+    sum_of_squares <- sum((x-avg)^2)
+    sd <- sqrt(1/(N-1)*sum_of_squares)
   }
   return(sd)
 }
@@ -60,10 +60,87 @@ sample_sd(x_1B)
 ```
 
 ```{r part1C Confidence Intervals}
+# Function to calculate confidence interval for the mean
+calculate_CI <- function(x, conf = 0.95) {
+  
+  # Number of observations
+  N <- length(x)
+  
+  # Sample mean
+  mean_x <- sum(x) / N
+  
+  # Sample standard deviation
+  sum_of_squares <- sum((x - mean_x)^2)
+  sample_sd <- sqrt(sum_of_squares / (N - 1))
+  
+  # Standard error of the mean
+  standard_error <- sample_sd / sqrt(N)
+  
+  # Alpha value
+  alpha <- 1 - conf
+  
+  # Degrees of freedom
+  degrees_freedom <- N - 1
+  
+  # t-score for the confidence level and degrees of freedom
+  t_score <- qt(p = alpha / 2, df = degrees_freedom, lower.tail = FALSE)
+  
+  # Calculate the margin of error
+  margin_of_error <- t_score * standard_error
+  
+  # Calculate the confidence interval
+  lower_bound <- mean_x - margin_of_error
+  upper_bound <- mean_x + margin_of_error
+  
+  # Return the confidence interval as a named vector
+  return(c(lower_bound = lower_bound, upper_bound = upper_bound))
+}
+
+# Example usage:
+x <- c(5, 7, 8, 9, 10)
+
+# Calculate 95% confidence interval
+CI_95 <- calculate_CI(x, conf = 0.95)
+CI_95
+
+# Calculate 90% confidence interval
+CI_90 <- calculate_CI(x, conf = 0.90)
+CI_90
 
 ```
 
 ```{r part2 Wrangling data}
+#loading the tidytuesday data and avoiding re-downloading by using here package
+library(tidytuesdayR)
+
+tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+rainfall <- tuesdata$rainfall
+temperature <- tuesdata$temperature
+
+library(here)
+if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
+    tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+    rainfall <- tuesdata$rainfall
+    temperature <- tuesdata$temperature
+
+    # save the files to RDS objects
+    saveRDS(tuesdata$rainfall, file = here("data", "tuesdata_rainfall.RDS"))
+    saveRDS(tuesdata$temperature, file = here("data", "tuesdata_temperature.RDS"))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```
 
