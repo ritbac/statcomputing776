@@ -9,32 +9,61 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r part1A}
-Exp <- function(x, k) {
-    # Add your solution here
-}
+```{r part1A Exponential transformation}
+
 # Define the function to compute exponential using series expansion
-exp <- function(x, k) {
-  # Initialize the result with the first term (1)
-  result <- 1
-  
+Exp <- function(x, k) {
+ 
   # Add the terms of the series expansion up to k terms
   for (i in 1:k) {
-    result <- result + (x^i) / factorial(i)
+    result <- 1 + x + (x^i) / factorial(i)
   }
   
   return(result)
 }
 
-# Example of usage
-x <- 2
-k <- 3
-exp(x, k)  # This will calculate 1 + x + x^2/2! + x^3/3!
+# Example of function use
+x_1A <- 3
+k_1A <- 7
+Exp(x, k) 
 
 
 ```
 
-```{r part1B}
+```{r part1B Sample mean and sample standard deviation}
+#writing the function for calculating mean
+sample_mean <- function(x) {
+  {N <- length(x)
+   avg <- sum(x)/N
+  }
+  return(avg)
+}
+
+x_1B <- c(1, 3, 5, 7, 9)
+
+sample_mean(x_1B)
+
+x_demo <- c(5, 7, 8, 9, 10)
+
+#writing the function for calculating standard deviation
+sample_sd <- function(x) {
+  {
+    N <- length(x)
+    avg <- sample_mean(x)
+    vari <- sum((x-avg)^2)
+    sd <- sqrt(1/(N-1)*vari)
+  }
+  return(sd)
+}
+
+sample_sd(x_1B)
+```
+
+```{r part1C Confidence Intervals}
+
+```
+
+```{r part2 Wrangling data}
 
 ```
 
