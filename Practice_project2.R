@@ -77,11 +77,53 @@ print(hello)
 cat(hello)
 
 
+###############################project1 theke asnsi
+
+if (!require("tidytuesdayR", quietly = TRUE)) {
+  install.packages("tidytuesdayR")
+}
+
+## Install the remotes package if you don't have it
+if (!require("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+## Install the tidytuesdayR package (from GitHub) if you don't have it
+if (!require("tidytuesdayR", quietly = TRUE)) {
+  remotes::install_github("dslc-io/tidytuesdayR")
+}
 
 
+library("here")
+library("tidyverse")
+library("tidytuesdayR")
+
+tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+rainfall <- tuesdata$rainfall
+temperature <- tuesdata$temperature
 
 
+if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
+  tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+  rainfall <- tuesdata$rainfall
+  temperature <- tuesdata$temperature
+  
+  # save the files to RDS objects
+  saveRDS(tuesdata$rainfall, file = here("data", "tuesdata_rainfall.RDS"))
+  saveRDS(tuesdata$temperature, file = here("data", "tuesdata_temperature.RDS"))
+}
 
+if (!file.exists(here("data", "rainfall.RDS"))) {
+  url_csv <- "https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-01-07/rainfall.csv"
+  rainfall <- readr::read_csv(url_csv)
+  
+  # save the file to RDS objects
+  saveRDS(rainfall, file = here("data", "rainfall.RDS"))
+}
+
+rainfall <- readRDS(here("data", "rainfall.RDS"))
+as_tibble(rainfall)
+
+#####################################################################################
 
 
 

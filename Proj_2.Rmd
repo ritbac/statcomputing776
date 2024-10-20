@@ -1,0 +1,224 @@
+---
+title: "Project 2"
+author: "Cathy Cooper"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: Fun with Functions
+
+```{r}
+#check wd
+library(here)
+
+#load libraries
+library(tidyverse)
+library(tidytuesdayR)
+
+#Part 1A: Exponential Transformation
+
+Exp <- function(x, k) {
+  fun1A <- 1  #first term
+  for (i in 1:k) {        #create for loop
+    fun1A <- fun1A + (x^i) / factorial(i)
+  }
+  
+  return(fun1A)
+}
+
+# Example output
+print(Exp(2, 7))
+
+
+```
+
+```{r}
+#Part 1B: Sample mean and sample sd
+
+# Function to calculate the sample mean
+sample_mean <- function(x) {
+  N <- length(x)  # Get the number of observations
+  sum_x <- 0  # Initialize the sum
+  for (i in 1:N) {
+    sum_x <- sum_x + x[i]  # Add each element to the sum
+  }
+  return(sum_x / N)  # Return the average
+}
+
+# Function to calculate the sample standard deviation
+sample_sd <- function(x) {
+  N <- length(x)  # Get the number of observations
+  mean_x <- sample_mean(x)  # Compute the sample mean
+  
+  sum_squared_diff <- 0  # Initialize the sum of squared differences
+  for (i in 1:N) {
+    sum_squared_diff <- sum_squared_diff + (x[i] - mean_x)^2  # Compute the squared differences
+  }
+  
+  return(sqrt(sum_squared_diff / (N - 1)))  # Return the sample standard deviation
+}
+
+# Example output:
+
+sample_mean(c(12, 25, 13, 42, 67))  
+sample_sd(c(12, 25, 13, 42, 67))  
+
+```
+
+```{r}
+# Part 1C: Confidence Intervals
+# Assuming sample_mean and sample_sd functions already exist
+
+calculate_CI <- function(x, conf = 0.95) {
+  N <- length(x)  # Get the number of observations
+  mean_x <- sample_mean(x)  # sample mean
+  sd_x <- sample_sd(x)  # sample sd
+  SE <- sd_x / sqrt(N)  # Standard error of the mean
+  
+  alpha <- 1 - conf  # alpha
+  degrees_freedom <- N - 1  # Df for the t-distribution
+  t_score <- qt(p = alpha / 2, df = degrees_freedom, lower.tail = FALSE)  # t-score
+  
+  # confidence interval
+  margin_of_error <- t_score * SE
+  lower_bound <- mean_x - margin_of_error
+  upper_bound <- mean_x + margin_of_error
+  
+  # Return the confidence interval as a named vector
+  return(c(lower_bound = lower_bound, upper_bound = upper_bound))
+}
+
+# Example output:
+
+# 95% confidence interval
+calculate_CI(c(12, 25, 13, 42, 67),conf = 0.95)
+
+# 99% confidence interval
+calculate_CI(c(12, 25, 13, 42, 67),conf = 0.99)
+
+#Check func. matches existing func. in R
+
+dat <- data.frame(x = c(12, 25, 13, 42, 67))
+fit <- lm(x ~ 1, dat)
+
+# Calculate a 95% confidence interval
+confint(fit, level = 0.95)
+
+```
+
+## Part 2: Wrangling Data
+
+```{r}
+#Manually create a data subdirectory
+#check to see if files already exist with if()
+#next download data from tidytuesday and save to data subdirectory
+library(here)
+if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
+    tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+    rainfall <- tuesdata$rainfall
+    temperature <- tuesdata$temperature
+
+    # save the files to RDS objects
+    saveRDS(tuesdata$rainfall, file = here("data", "tuesdata_rainfall.RDS"))
+    saveRDS(tuesdata$temperature, file = here("data", "tuesdata_temperature.RDS"))
+}
+
+#Load datasets
+rainfall <- readRDS(here("data", "tuesdata_rainfall.RDS"))
+temperature <- readRDS(here("data", "tuesdata_temperature.RDS"))
+
+#take a glimpse at the data
+library(tidyverse)
+
+glimpse(rainfall)
+glimpse(temperature)
+```
+
+```{r}
+#Load Libraries
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(lubridate)
+
+#drop rows with NAs in rainfall
+
+rainfall_na_gone <- rainfall %>% drop_na()
+
+#create new date column (year+month+day)
+#create new column with year only
+
+rainfall_na_gone <- rainfall_na_gone %>%
+  mutate(
+    date = ymd(paste(year, month, day, sep = "-")), 
+    year_only = year(date)  
+)
+
+#convert city_name to uppercase
+rainfall_na_gone <- rainfall_na_gone %>%
+  mutate(city_name = str_to_upper(city_name))
+
+#join rainfall and temp datasets using innerjoin
+#to keep only obs present in both datasets
+
+df <- rainfall_na_gone %>%
+  inner_join(temperature, by = c("date" = "date", "city_name" = "city_name"))
+
+#print results of join
+as_tibble(df)
+
+```
+
+##Part 3: Data visualization
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+
+# Step 1: Filter data for years 2014 and onwards
+df_filt <- df %>%
+  filter(year >= 2014)
+
+###having a hard time changing color for max and min here##
+
+# Step 2: Create the plot
+ggplot( data = df_filt, mapping =  aes(x = date, y = temperature)) +
+    geom_line(aes(color = temp_type)) +
+    facet_wrap(~ city_name, scales = "free_y") +  # Facet by city_name
+    scale_color_manual(values = c("min" = "blue", "max" = "red")) + 
+    labs(
+    title = "Max and Min Temperatures Over Time (2014 and onwards)",
+    subtitle = "Trends in maximum and minimum temperatures for each city",
+    x = "Date",
+    y = "Temperature (°C)",
+    color = "Temp type",
+    caption = "Data source: df dataset from Part 2"
+  ) +
+  theme_minimal() +  # Use a minimal theme
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    legend.position = "bottom"
+  )
+
+ggplot( data = df_after_2014, mapping = aes(x = date, y = temperature)) +
+    geom_line( aes(color = temp_type) ) +
+    facet_wrap(~ city_name, scales = "free_y") + 
+    scale_color_manual(values = c("min" = "green4", "max" = "red3")) + 
+    labs(
+    title = "Max and Minimum Temperatures Over Time (2014 and onwards)",
+    subtitle = "Max temperature is increasing each year for most of the cities in Australia",
+    x = "Years",
+    y = "Temperature (°C)",
+    color = "Temp type",
+    caption = "Data source: TidyTuesday") +
+    theme_minimal()
+```
+

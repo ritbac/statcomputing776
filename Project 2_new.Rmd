@@ -1,0 +1,307 @@
+---
+title: "Project 2"
+author: "Ritesh Bachar"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: Fun with Functions
+
+```{r part1A Exponential transformation}
+# creating the function to compute exponential using series expansion
+exp <- function(x, k) {
+ 
+  # Adding the terms of the series expansion up to k terms
+  for (i in 1:k) {
+    result <- 1 + x + (x^i) / factorial(i)
+  }
+  
+  return(result)
+}
+
+# Example of using function
+exp(4, 6) 
+
+```
+
+```{r part1B Sample mean and sample standard deviation}
+#writing the function for calculating mean
+sample_mean <- function(x) {
+  {N <- length(x)
+   avg <- sum(x)/N
+  }
+  return(avg)
+}
+
+example_1B <- c(1, 3, 5, 7, 9)
+#example of using mean function
+sample_mean(example_1B)
+
+#writing the function for calculating standard deviation
+sample_sd <- function(x) {
+  {
+    N <- length(x)
+    avg <- sample_mean(x)
+    sum_of_squares <- sum((x-avg)^2)
+    sd <- sqrt(1/(N-1)*sum_of_squares)
+  }
+  return(sd)
+}
+
+#example of using std deviation function
+sample_sd(example_1B)
+
+```
+
+```{r part1C Confidence Intervals}
+# Creating function to calculate confidence interval
+calculate_CI <- function(x, conf = 0.95) {
+  N <- length(x)  # the number of observations
+  mean_x <- sample_mean(x)  # using sample_mean functions from before
+  sd_x <- sample_sd(x)  # using sample_sd functions from before
+  SE <- sd_x / sqrt(N)  # Standard error of the mean
+  
+  alpha <- 1 - conf  # alpha value
+  degrees_freedom <- N - 1  # degrees of freedom for the t-distribution
+  t_score <- qt(p = alpha / 2, df = degrees_freedom, lower.tail = FALSE)  # t-score
+  
+  # confidence interval
+  margin_of_error <- t_score * SE
+  lower_bound <- mean_x - margin_of_error
+  upper_bound <- mean_x + margin_of_error
+  
+  # Return the confidence interval as a named vector
+  return(c(lower_bound = lower_bound, upper_bound = upper_bound))
+}
+
+# Example usage:
+example_1C <- c(11, 13, 15, 17, 19)
+
+# Calculate 95% confidence interval
+CI_95 <- calculate_CI(example_1C, conf = 0.95)
+print (CI_95)
+
+#Checking if my CI function matches with existing function in R
+
+dat <- data.frame(x = example_1C)
+fit <- lm(x ~ 1, dat)
+
+# Calculate a 95% confidence interval
+confint(fit, level = 0.95)
+
+```
+
+## Part 2: Wrangling Data
+
+``` {r part2 wrangling data} 
+#loading tidytuesday
+library(here)
+#creating data folder
+if (!dir.exists(here("data"))) {
+    dir.create(here("data"))
+}
+
+#loading tidytuesday data
+if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
+    tuesdata <- tidytuesdayR::tt_load("2020-01-07")
+    rainfall <- tuesdata$rainfall
+    temperature <- tuesdata$temperature
+
+    # save the files to RDS objects
+    saveRDS(tuesdata$rainfall, file = here("data", "tuesdata_rainfall.RDS"))
+    saveRDS(tuesdata$temperature, file = here("data", "tuesdata_temperature.RDS"))
+}
+
+#loading the datasets
+rainfall <- readRDS(here("data", "tuesdata_rainfall.RDS"))
+temperature <- readRDS(here("data", "tuesdata_temperature.RDS"))
+
+library(tidyverse)
+
+#taking a glimpse of the 2 datasets
+glimpse(rainfall)
+glimpse(temperature)
+
+#Load Libraries
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(lubridate)
+
+#dropping rows with NAs in rainfall
+rainfall_without_na <- rainfall %>% drop_na()
+
+#creating new date column (year+month+day)
+#creating new column with year only
+
+rainfall_without_na <- rainfall_without_na %>%
+  mutate(
+    date = ymd(paste(year, month, day, sep = "-")),
+      year_only = year 
+)
+
+#dropping the year, month, and day columns
+rainfall_without_na <- rainfall_without_na %>%
+  select(-year, -month, -day)
+
+class(rainfall_without_na$date)
+class(rainfall_without_na$year_only)
+
+#converting city_name to uppercase
+rainfall_without_na <- rainfall_without_na %>%
+  mutate(city_name = str_to_upper(city_name))
+
+#joining rainfall and temp datasets using innerjoin
+#to keep only obs present in both datasets
+
+df <- rainfall_without_na %>%
+  inner_join(temperature, by = c("date" = "date", "city_name" = "city_name"))
+
+#printing results of join
+as_tibble(df)
+
+```
+
+## Part 3: Data Visualization
+
+```{r Part 3A: Plotting temperature data over time}
+library(ggplot2)
+#considering data for years 2014 and onwards
+df_after_2014 <- df %>%
+  filter(year_only >= "2014")
+
+#city min max temp in the same plot with 2 different colors
+temp_over_time <- ggplot( data = df_after_2014, mapping = aes(x = date, y = temperature)) +
+    geom_line( aes(color = temp_type) ) +
+    facet_wrap(~ city_name, scales = "free_y") + 
+    ylim(-10, 50) +
+    scale_color_manual(values = c("min" = "green4", "max" = "brown4"),
+                       labels = c( "min" = "Minimum Temperature", "max" = "Maximum Temperature") ) + 
+    labs(
+    title = "Temperatures Trends in Australian Cities (2014 and onwards)",
+    subtitle = "Temperature variability in Canberra is the highest compared to the other cities",
+    x = "Years",
+    y = "Temperature (°C)",
+    color = "Temperature type",
+    caption = "Data source: TidyTuesday") +
+    theme_gray() +
+    theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = "bold"),
+    strip.text = element_text(face = "bold"),
+    legend.position = c(1, 0), 
+    legend.justification = c(1, 0) 
+  )
+
+#printing the plot
+print(temp_over_time)
+
+```
+
+```{r Part 3B: Plotting rainfall over time}
+plot_rainfall <- function(city_input, year_input) {
+  
+  # Filter the data for the given city and year
+  df_city_year <- df %>%
+    filter(city_name == city_input, year_only == year_input)
+  
+  # Error handling if no data exists for the input city and year
+  if (nrow(df_city_year) == 0) {
+    stop("No data available for the specified city and year.")
+  }
+  
+  # Log-transform the rainfall data (log1p to handle zero rainfall values)
+  df_city_year <- df_city_year %>%
+    mutate(log_rainfall = log1p(rainfall))
+  
+  # Create a histogram of log-transformed rainfall
+  ggplot(df_city_year, aes(x = log_rainfall)) +
+    geom_histogram(bins = 25, fill = "blue", color = "black") +
+    labs(
+      title = paste("Rainfall Trend for", city_input, "in", year_input),
+      subtitle = paste("Frequency of Rainfall in log scale for", city_input, "in", year_input),
+      x = "Rainfall in log scale",
+      y = "Frequency",
+      caption = "Data source: TidyTuesday"
+    ) +
+     theme_gray() +
+    theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+}
+
+# Example of the plot function
+plot_rainfall("PERTH", 1980)
+
+```
+
+### Description of designing the function
+I chose to input city and year and be able to see the log transformed rainfall for that city in that year. For this, I first filtered the **df** data frame. As all city and year did not have all measurements so, I created a *stop* function that would mention about missing values rather than showing an error. This would help to understand about the missing values. After that, I included **ggplot** in the function and used the city and year inputs and the log transformed rainfall to give an output of histogram. When this function is called with different city names and year, the histogram will show the log rainfall data of that specific city in that specific year. Finally, I customized the title, subtitle, axis labels for better viewing and understanding of the plot.
+
+
+## Part 4: Apply functions and plot
+
+```{r Part 4A: Tasks}
+#filtering years 2014 and onwards
+df_after_2014 <- df %>%
+  filter(year_only >= "2014")
+
+#grouping by city and year, and calculating the statistics
+rain_df <- df_after_2014 %>%
+  group_by(city_name, year_only) %>%
+  summarise(
+    mean_rainfall = sample_mean(rainfall),
+    sd_rainfall = sample_sd(rainfall),
+    
+    # Using calculate_CI and assigning both lower and upper bounds at once
+    CI = list(calculate_CI(rainfall)),  # Storing the CI as a list temporarily
+    lower_bound = CI[[1]]["lower_bound"],
+    upper_bound = CI[[1]]["upper_bound"]
+  ) %>%
+  ungroup() %>%
+  select(-CI)  # Removing the temporary CI list column
+
+# View the summarized data
+print(rain_df)
+
+```
+
+```{r part 4B plotting the rain_df }
+# Creating the final plot
+final_plot <- ggplot(data = rain_df, aes(x = year_only)) +
+  geom_point(aes(y = mean_rainfall), color = "blue") +  # geom points for mean rainfall
+  geom_line(aes(y = mean_rainfall), color = "blue") +   # geom line connecting mean points
+  geom_errorbar(aes(ymin = lower_bound, ymax = upper_bound), width = 0.2) +  # error bars for CI
+  facet_wrap(~ city_name, scales = "free_y") +  # faceted by city with free y-axis scales
+    ylim(0, 11) + #inserting ylim to better see the yaxis
+  labs(
+    title = "Rainfall trends in Australian Cities (2014 and beyond)",
+    subtitle = "On average Perth has the most showers in a year followed by Melbourne and Brisbane,\nCanberra and Sydney showers are similar over the years",
+    x = "Year",
+    y = "Average Rainfall (mm)",
+    caption = "Data Source: TidyTuesday"
+  ) +
+  theme_gray() +
+    theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 10, face = "bold"),
+    strip.text = element_text(face = "bold")
+  )
+
+#printing the final plot
+print(final_plot)
+
+```
+

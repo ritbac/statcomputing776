@@ -111,11 +111,7 @@ CI_90
 
 ```{r part2 Wrangling data}
 #loading the tidytuesday data and avoiding re-downloading by using here package
-library(tidytuesdayR)
-
-tuesdata <- tidytuesdayR::tt_load("2020-01-07")
-rainfall <- tuesdata$rainfall
-temperature <- tuesdata$temperature
+## Install the tidytuesdayR package if you don't have it
 
 library(here)
 if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
@@ -128,10 +124,8 @@ if (!file.exists(here("data", "tuesdata_rainfall.RDS"))) {
     saveRDS(tuesdata$temperature, file = here("data", "tuesdata_temperature.RDS"))
 }
 
-
-
-
-
+rainfall <- readRDS(here("data", "tuesdata_rainfall.RDS"))
+temperature <- readRDS(here("data", "tuesdata_temperature.RDS"))
 
 
 
