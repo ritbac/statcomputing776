@@ -1,0 +1,318 @@
+---
+title: "Project_3"
+author: "Cathy Cooper"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part 1: Explore album sales
+
+```{r}
+#Load Libraries
+
+library("here")
+library("tidyverse")
+
+#Load data
+
+rds_files <- c("b_lyrics.RDS", "ts_lyrics.RDS", "sales.RDS")
+
+## Check whether we have all 3 files
+
+if (any(!file.exists(here("data", rds_files)))) {
+    ## If we don't, then download the data
+    b_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/beyonce_lyrics.csv")
+    ts_lyrics <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/taylor_swift_lyrics.csv")
+    sales <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-09-29/sales.csv")
+
+    ## Then save the data objects to RDS files
+    saveRDS(b_lyrics, file = here("data", "b_lyrics.RDS"))
+    saveRDS(ts_lyrics, file = here("data", "ts_lyrics.RDS"))
+    saveRDS(sales, file = here("data", "sales.RDS"))
+}
+
+#Load data
+
+b_lyrics <- readRDS(here("data", "b_lyrics.RDS"))
+ts_lyrics <- readRDS(here("data", "ts_lyrics.RDS"))
+sales <- readRDS(here("data", "sales.RDS"))
+
+```
+
+## Part 1A
+
+```{r}
+# Load required packages
+library(readr)
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(forcats)
+
+#Step 1: create new released column in "sales"
+
+#check current class of released
+class(sales$released)
+
+#create regex to remove parentheses and brackets
+sales <- sales %>%
+  mutate(released = str_remove(released, 
+  "\\s*\\(.*\\)+\\s*\\[.*\\]"))
+
+  # \\s*: find any whitespace before the parentheses or brackets
+#\\(, \\[: find either an opening 
+#parenthesis ( or an opening bracket [
+#.*: find any characters within () or []
+# +: does it for both parenthesis AND brackets
+#\\), \\]: find either a closing parenthesis 
+# ) or a closing bracket ]
+
+#change class of released_new to date
+sales <- sales %>%
+  mutate(released = mdy(released))
+
+#confirm           
+class(sales$released)
+
+#list distinct countries 
+distinct_country <- sales %>% 
+  select(country) %>% 
+  distinct()
+
+# Step 2: Create a factor called 'country'
+sales <- sales %>%
+  mutate(country = fct_collapse(country,
+              `US` = c("US"),
+              `UK` = c("UK"),
+              `World` = c("World", "WW"),
+              `Other` = c("AUS", "JPN",
+                          "CAN","FRA","FR")))
+#collapse all other countries into other
+
+# Step 3: transform sales into unit (millions)
+
+sales <- sales %>%
+  mutate(sales= sales / 1e6)
+
+# Step 4: Keep only UK,US, and World
+sales <- sales %>%
+  filter(country %in% c("US", "UK", "World"))
+
+# Print the final wrangled tibble
+as_tibble(sales)
+
+```
+
+## Part 1B
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+# Assuming 'sales' is your previously wrangled data frame
+
+# Step 1: Keep only album sales from the US
+us_sales <- sales %>%
+  filter(country == "US")
+
+# Step 2: Create a new column called years_since_release
+us_sales <- us_sales %>%
+  mutate(years_since_release = floor(interval(released, today()) / years(1)))  # Calculate years since release
+#floor used to round to nearest whole number
+
+# Step 3: calculate most recent, oldest, and median years since release
+us_sales_stats <- us_sales %>%
+  summarize(
+    most_recent = min(years_since_release, na.rm = TRUE),
+    oldest = max(years_since_release, na.rm = TRUE),
+    median_years = median(years_since_release, na.rm = TRUE)
+  )
+
+# Print the summary statistics
+print(us_sales_stats)
+
+```
+
+## Part 1C
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Assuming 'sales' is your wrangled data frame from Part 1A
+
+# Step 1: Calculate total album sales for each artist and each country
+total_sales <- sales %>%
+  group_by(artist, country) %>%
+  summarize(total_sales_millions = sum(sales, na.rm = TRUE), .groups = 'drop') 
+
+# .groups : overrides default and drops 
+# grouping by first argument (artist)
+
+# Step 2: Calculate the percentage of total sales by artist
+total_sales <- total_sales %>%
+  group_by(artist) %>%
+  mutate(percentage_sales = total_sales_millions / sum(total_sales_millions) * 100)
+
+# Step 3: Create a percent stacked bar chart
+ggplot(total_sales, aes(x = artist, y = percentage_sales, fill = country)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Percentage of Album Sales by Artist and Country",
+       subtitle = "More than 50% of sales for both artists are international, excluding the UK",
+       x = "Artist",
+       y = "Percentage of Sales (%)") +
+  scale_y_continuous(labels = scales::percent_format(scale = 100)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+         plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face= "bold"),
+    strip.text = element_text (face="bold"))
+
+```
+
+## Part 1D
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(forcats)
+
+
+# Step 1: Filter for World sales and keep only necessary columns 
+world_sales <- sales %>%
+  filter(country == "World") %>%
+  select(title, artist, sales)
+
+# Step 2: Order the album titles by sales (from most to least)
+world_sales <- world_sales %>%
+  mutate(title = fct_reorder(title, sales, .desc = TRUE))
+
+# Step 3: Create the bar plot
+ggplot(world_sales, aes(x = title, y = sales, fill = artist)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  # Flips the axes to make album titles readable
+  labs(title = "Global Album Sales by Artist",
+       subtitle= "Dangerously in Love and Fearless were highest selling albums for Beyonce and Taylor, respectively",
+       x = "Album Title",
+       y = "Sales (in millions)") +
+  theme_minimal() +
+  theme( legend.title= element_text(size=16, face= "bold"),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face= "bold"),
+    strip.text = element_text (face="bold")    )  # Adjust text size for readability
+
+```
+
+## Part 1E
+
+```{r}
+
+# Step 1: Filter to keep necessary columns 
+sales_by_release <- sales %>%
+  select(title, artist, released, sales, country)
+
+# Step 2: Create the scatter plot
+ggplot(sales_by_release, aes(x = released, y = sales, color = artist)) +
+  geom_point(size = 3) +  # Adjust size of points
+  labs(title = "Sales of Studio Albums by Release Date",
+       subtitle= "Highest album sales for US,UK, and the rest of world was in 2008",
+       x = "Release Date",
+       y = "Sales (in millions)") +
+  facet_wrap(~ country, scales = "free_y") +  # Facet by country with free y-axis scales
+  theme_gray() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        legend.title= element_text(size=16, face= "bold"),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12, face= "bold"),
+    strip.text = element_text (face="bold"))
+
+```
+
+# Part 2: Exploring Sentiment of Lyrics
+
+# Part 2A
+
+```{r}
+library(dplyr)
+library(tidytext)
+
+# Use "lines" token to tokenize lyrics column
+
+tidy_ts_lyrics <- ts_lyrics %>%
+  unnest_tokens(
+    output=line, #creates new column called 'line'
+    input= Lyrics, #replaces 'Lyrics' with output 'line'
+    token = "lines")  
+
+#How many lines contain "hello"?
+
+library(stringr)
+
+# Step 1: Count lines containing "hello"
+hello_lines <- tidy_ts_lyrics %>%
+  filter(str_detect(line, "hello")) 
+
+print(hello_lines)
+
+#step 2: Count the total number of lines containing "hello"
+count_hello <- nrow(hello_lines) 
+cat("Total rows containing 'hello':", count_hello) 
+#prints "total rows..." 
+#with sum of rows 
+
+#How many lines contain "goodbye"?
+
+# Step 1: Count lines containing "goodbye"
+goodbye_lines <- tidy_ts_lyrics %>%
+  filter(str_detect(line, "goodbye"))
+
+print(goodbye_lines)
+
+# step 2: Count the total number of lines containing "goodbye"
+count_goodbye <- nrow(goodbye_lines)
+cat("Total rows containing 'goodbye':", count_goodbye)
+
+```
+
+## Part 2B
+
+```{r}
+#Repeat part 2A with b_lyrics
+
+# b_lyrics already has line column
+
+#How many lines contain "hello"?
+
+# Step 1: Count lines containing "hello"
+b_hello_lines <- b_lyrics %>%
+  filter(str_detect(line, "hello")) 
+
+print(b_hello_lines)
+
+#step 2: Count the total number of lines containing "hello"
+count_hello <- nrow(b_hello_lines) 
+cat("Total rows containing 'hello':", count_hello) 
+
+#How many lines contain "goodbye"?
+
+# Step 1: Count lines containing "goodbye"
+b_goodbye_lines <- b_lyrics %>%
+  filter(str_detect(line, "goodbye"))
+
+print(b_goodbye_lines)
+
+# step 2: Count the total number of lines containing "goodbye"
+count_goodbye <- nrow(b_goodbye_lines)
+cat("Total rows containing 'goodbye':", count_goodbye)
+
+```
