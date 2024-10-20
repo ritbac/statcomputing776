@@ -153,7 +153,7 @@ album_sales_stacked <- ggplot(total_album_sales,
     caption = "Data source: TidyTuesday") +
   theme_gray() +
   theme(
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 13, face = "bold"),
     plot.subtitle = element_text(size = 12),
     axis.text = element_text(size = 10),
     axis.title = element_text(size = 10, face = "bold"),
@@ -183,7 +183,7 @@ sales_world_plot <- ggplot(sales_world, aes(x = sales_in_millions , y = fct_reor
   ) +
   theme_grey() +
   theme(
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 13, face = "bold"),
     plot.subtitle = element_text(size = 12),
     axis.text = element_text(size = 10),
     axis.title = element_text(size = 10, face = "bold"),
@@ -215,7 +215,7 @@ sales_scatter_plot <- ggplot(sales_top, aes(x = released_year, y = sales_in_mill
   ylim(0, 12) +
   theme_grey() +  
   theme(
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 13, face = "bold"),
     plot.subtitle = element_text(size = 12),
     axis.text = element_text(size = 10),
     axis.title = element_text(size = 10, face = "bold"),
@@ -291,8 +291,8 @@ print(count_goodbye_b)
 
 ################################### 2C ######################################
 
-# Tokenizing lyrical lines by words
-b_lyrics_tidy <- b_lyrics %>%
+# 1.Tokenizing lyrical lines by words
+b_lyrics_tokenized <- b_lyrics %>%
   unnest_tokens(
     output = word,  # creates a new column 'word'
     input = line,   # tokenize the 'line' column
@@ -300,84 +300,90 @@ b_lyrics_tidy <- b_lyrics %>%
   )
 
 # View the tokenized dataset
-print(b_lyrics_tidy)
+print(b_lyrics_tokenized)
+view(b_lyrics_tokenized)
 
-# Load stopwords from the tidytext package
+# 2. Load stopwords from the tidytext package
 data("stop_words")
 
 # Remove stopwords from the tokenized lyrics
-b_lyrics_no_stopwords <- b_lyrics_tidy %>%
-  anti_join(stop_words, by = "word")  # Filter out stopwords
+b_lyrics_no_stopwords <- b_lyrics_tokenized %>%
+  anti_join(stop_words)  # Filter out stopwords
 
 # View the dataset without stopwords
 print(b_lyrics_no_stopwords)
+view(b_lyrics_no_stopwords)
 
-# Calculate the total number of occurrences for each word
-word_count <- b_lyrics_no_stopwords %>%
-  count(word, sort = TRUE)  # Count occurrences and sort in descending order
+# 3. Calculate the total number of occurrences for each word
+b_lyrics_no_stopwords_word_count <- b_lyrics_no_stopwords %>%
+  count(word)  # Count occurrences and sort in descending order
 
 # View the word counts
-print(word_count)
+print(b_lyrics_no_stopwords_word_count)
+view(b_lyrics_no_stopwords_word_count)
 
-# Load the "bing" sentiment lexicon from the tidytext package
+# 4. Load the "bing" sentiment lexicon from the tidytext package
 bing_lexicon <- get_sentiments("bing")
 
 # Join the word count data with the bing sentiment lexicon
-word_count_with_sentiment <- word_count %>%
-  inner_join(bing_lexicon, by = "word")  # Merge based on the word column
+b_lyrics_no_stopwords_word_count_sentiment <- b_lyrics_no_stopwords_word_count %>%
+  inner_join(bing_lexicon)  # Merge based on the word column
 
 # View the data with sentiment column
-print(word_count_with_sentiment)
+print(b_lyrics_no_stopwords_word_count_sentiment)
+view(b_lyrics_no_stopwords_word_count_sentiment)
 
-# Sort the data from most frequent to least frequent words
-word_count_with_sentiment_sorted <- word_count_with_sentiment %>%
+# 5. Sort the data from most frequent to least frequent words
+b_lyrics_no_stopwords_word_count_sentiment_sorted <- b_lyrics_no_stopwords_word_count_sentiment %>%
   arrange(desc(n))  # Sort in descending order of the word count
 
 # View the sorted data
-print(word_count_with_sentiment_sorted)
+print(b_lyrics_no_stopwords_word_count_sentiment_sorted)
+view(b_lyrics_no_stopwords_word_count_sentiment_sorted)
 
-# Keep only the top 25 most frequent words
-top_25_words <- word_count_with_sentiment_sorted %>%
+# 6. Keep only the top 25 most frequent words
+b_lyrics_top_25_words <- b_lyrics_no_stopwords_word_count_sentiment_sorted %>%
   slice_head(n = 25)  # Select the first 25 rows
 
-# View the top 25 words
-print(top_25_words)
+# 7. View the top 25 words
+print(b_lyrics_top_25_words)
+view(b_lyrics_top_25_words)
 
-# Create a bar plot for the top words with their frequency
-top_words_plot <- ggplot(top_25_words, aes(x = n, y = fct_reorder(word, n), fill = sentiment)) +
+# 8. Create a bar plot for the top words with their frequency
+b_lyrics_top_25_words_plot <- ggplot(b_lyrics_top_25_words, aes(x = n, y = fct_reorder(word, n), fill = sentiment)) +
   geom_bar(stat = "identity") +
   labs(
-    title = "Top 25 Most Frequent Words in Lyrics",
-    subtitle = "haven't thought anything yet",
+    title = "Top 25 Most Frequent Words in Beyoncé's Lyrics",
+    subtitle = "Love is the most used word followed by crazy and top",
     x = "Frequency",
     y = "Words",
-    fill = "Sentiment"
+    fill = "Sentiment",
+    caption = "Data source: TidyTuesday"
   ) +
   theme_grey() +
   theme(
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 13, face = "bold"),
     axis.text = element_text(size = 10),
-    axis.title = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 11, face = "bold"),
     legend.position = "right"
   )
 
 # Print the plot
-print(top_words_plot)
+print(b_lyrics_top_25_words_plot)
 
 
 install.packages("wordcloud")
 library("wordcloud")
 
-# Create a word cloud of the top 25 most frequent words
+# 9. Create a word cloud of the top 25 most frequent words
 wordcloud(
-  words = top_25_words$word,   # Words to be plotted
-  freq = top_25_words$n,       # Frequencies of the words
-  min.freq = 1,                # Minimum frequency to include in the cloud
-  max.words = 25,              # Maximum number of words to show
-  random.order = FALSE,        # Plot words in order of frequency
-  rot.per = 0.35,              # Proportion of words that are rotated
-  scale = c(10, 0.5),           # Range of text size
-  colors = brewer.pal(8, "Dark2")  # Color palette
+  words = b_lyrics_top_25_words$word,
+  freq = b_lyrics_top_25_words$n,
+  max.words = 100,
+  random.order = TRUE,
+  random.color = FALSE,
+  scale = c(7, 0.5),
+  colors = brewer.pal(8, "Dark2") 
 )
 
 ################################### 2D ######################################
@@ -385,169 +391,248 @@ wordcloud(
 library(dplyr)
 library(tidytext)
 
-ts_lyrics_tidy <- ts_lyrics %>%
+# 1.Tokenizing lyrical lines by words
+ts_lyrics_tokenized <- ts_lyrics %>%
   unnest_tokens(
     output = word,       # creates new column 'word'
     input = Lyrics,      # replaces 'Lyrics' with output 'word'
     token = "words"      # tokenizing by words
   )
 
-data("stop_words")  # Load stop words
+# View the tokenized dataset
+print(ts_lyrics_tokenized)
+view(ts_lyrics_tokenized)
 
-ts_lyrics_cleaned <- ts_lyrics_tidy %>%
-  anti_join(stop_words, by = "word")  # Remove stopwords
+# 2. Load stopwords from the tidytext package
+data("stop_words")
 
-word_counts_ts <- ts_lyrics_cleaned %>%
-  count(word, sort = TRUE)  # Count occurrences of each word
+# Remove stopwords from the tokenized lyrics
+ts_lyrics_no_stopwords <- ts_lyrics_tokenized %>%
+  anti_join(stop_words)  # Filter out stopwords
 
-sentiment_bing <- get_sentiments("bing")
+# View the dataset without stopwords
+print(ts_lyrics_no_stopwords)
+view(ts_lyrics_no_stopwords)
 
-word_sentiment_ts <- word_counts_ts %>%
-  left_join(sentiment_bing, by = "word")  # Add sentiment
+# 3. Calculate the total number of occurrences for each word
+ts_lyrics_no_stopwords_word_count <- ts_lyrics_no_stopwords %>%
+  count(word)  # Count occurrences and sort in descending order
 
-word_sentiment_sorted_ts <- word_sentiment_ts %>%
-  arrange(desc(n))  # Sort by frequency
+# View the word counts
+print(ts_lyrics_no_stopwords_word_count)
+view(ts_lyrics_no_stopwords_word_count)
 
-top_25_words_ts <- word_sentiment_sorted_ts %>%
-  top_n(25, n)  # Get top 25 words
+# 4. Load the "bing" sentiment lexicon from the tidytext package
+bing_lexicon <- get_sentiments("bing")
 
-print(top_25_words_ts)
+# Join the word count data with the bing sentiment lexicon
+ts_lyrics_no_stopwords_word_count_sentiment <- ts_lyrics_no_stopwords_word_count %>%
+  inner_join(bing_lexicon)  # Merge based on the word column
 
+# View the data with sentiment column
+print(ts_lyrics_no_stopwords_word_count_sentiment)
+view(ts_lyrics_no_stopwords_word_count_sentiment)
 
-# Create a bar plot for the top 25 most frequent words in Taylor Swift's lyrics
-top_words_plot_ts <- ggplot(top_25_words_ts, aes(x = n, y = fct_reorder(word, n), fill = sentiment)) +
+# 5. Sort the data from most frequent to least frequent words
+ts_lyrics_no_stopwords_word_count_sentiment_sorted <- ts_lyrics_no_stopwords_word_count_sentiment %>%
+  arrange(desc(n))  # Sort in descending order of the word count
+
+# View the sorted data
+print(ts_lyrics_no_stopwords_word_count_sentiment_sorted)
+view(ts_lyrics_no_stopwords_word_count_sentiment_sorted)
+
+# 6. Keep only the top 25 most frequent words
+ts_lyrics_top_25_words <- ts_lyrics_no_stopwords_word_count_sentiment_sorted %>%
+  slice_head(n = 25)  # Select the first 25 rows
+
+# 7. View the top 25 words
+print(ts_lyrics_top_25_words)
+view(ts_lyrics_top_25_words)
+
+# 8. Create a bar plot for the top words with their frequency
+ts_lyrics_top_25_words_plot <- ggplot(ts_lyrics_top_25_words, aes(x = n, y = fct_reorder(word, n), fill = sentiment)) +
   geom_bar(stat = "identity") +
   labs(
     title = "Top 25 Most Frequent Words in Taylor Swift's Lyrics",
-    subtitle = "Analyzing sentiment in her lyrics",
+    subtitle = "Love is the most used word followed by bad and shake",
     x = "Frequency",
     y = "Words",
-    fill = "Sentiment"
+    fill = "Sentiment",
+    caption = "Data source: TidyTuesday"
   ) +
   theme_grey() +
   theme(
-    plot.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 13, face = "bold"),
     axis.text = element_text(size = 10),
-    axis.title = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 11, face = "bold"),
     legend.position = "right"
   )
 
 # Print the plot
-print(top_words_plot_ts)
+print(ts_lyrics_top_25_words_plot)
 
 
+install.packages("wordcloud")
+library("wordcloud")
+
+# 9. Create a word cloud of the top 25 most frequent words
 wordcloud(
-  words = top_25_words_ts$word,
-  freq = top_25_words_ts$n,
-  min.freq = 1,
-  max.words = 25,
-  random.order = FALSE,
-  rot.per = 0.35,
-  scale = c(4, 0.5),
-  colors = brewer.pal(8, "Dark2")
+  words = ts_lyrics_top_25_words$word,
+  freq = ts_lyrics_top_25_words$n,
+  max.words = 100,
+  random.order = TRUE,
+  random.color = FALSE,
+  scale = c(7, 0.5),
+  colors = brewer.pal(8, "Dark2") 
 )
 
 
 ################################### 2E ######################################
 
-# Tokenize each lyrical line by words
-ts_lyrics_tidy <- ts_lyrics %>%
+# 1.Tokenizing lyrical lines by words
+ts_lyrics_tokenized <- ts_lyrics %>%
   unnest_tokens(
-    output = word,      # New column named 'word'
-    input = Lyrics,     # Column to tokenize
-    token = "words"     # Tokenizing by words
+    output = word,       # creates new column 'word'
+    input = Lyrics,      # replaces 'Lyrics' with output 'word'
+    token = "words"      # tokenizing by words
   )
 
-# Print the first few rows of the tidy dataset
-print(head(ts_lyrics_tidy))
+# View the tokenized dataset
+print(ts_lyrics_tokenized)
+view(ts_lyrics_tokenized)
 
-# Remove stopwords
-ts_lyrics_clean <- ts_lyrics_tidy %>%
-  anti_join(stop_words)  # Using the built-in stop_words dataset
+# 2. Load stopwords from the tidytext package
+data("stop_words")
 
-# Print the first few rows of the cleaned dataset
-print(head(ts_lyrics_clean))
+# Remove stopwords from the tokenized lyrics
+ts_lyrics_no_stopwords <- ts_lyrics_tokenized %>%
+  anti_join(stop_words)  # Filter out stopwords
 
-# Calculate total number of occurrences for each word in the lyrics for each album
-word_counts <- ts_lyrics_clean %>%
-  count(Album, word, sort = TRUE)  # Counting words and sorting by frequency
+# View the dataset without stopwords
+print(ts_lyrics_no_stopwords)
+view(ts_lyrics_no_stopwords)
 
-# Print the first few rows of the word counts dataset
-print(head(word_counts))
+# 3. Calculate the total number for each word in the lyrics for each Album.
+ts_album_word_count <- ts_lyrics_no_stopwords %>%
+  count(Album, word, sort = TRUE)   # Count occurrences and sort in descending order
 
-install.packages("textdata")
-library("textdata")
+# View the word counts
+print(ts_album_word_count)
+view(ts_album_word_count)
 
-# Get the AFINN sentiment lexicon
-afinn <- get_sentiments("afinn")
+# 4. Get the AFINN sentiment lexicon
+afinn_lexicon <- get_sentiments("afinn")
 
 # Join the word counts with the AFINN lexicon to add sentiment scores
-word_counts_with_sentiment <- word_counts %>%
+ts_album_word_count_sentiment <- ts_album_word_count %>%
   inner_join(afinn, by = "word")
 
 # Print the first few rows of the updated dataset
-print(head(word_counts_with_sentiment))
+print(ts_album_word_count_sentiment)
+view(ts_album_word_count_sentiment)
 
-print(word_counts_with_sentiment)
-
-# Summarize to get average sentiment score for each album
-average_sentiment <- word_counts_with_sentiment %>%
-  group_by(album) %>%
+# 5. Summarize to get average sentiment score for each album
+ts_album_average_sentiment <- ts_album_word_count_sentiment %>%
+  group_by(Album) %>%
   summarise(average_sentiment = mean(value, na.rm = TRUE)) # Assuming 'value' is the column with sentiment scores
 
-# Join with the album sales data frame
-combined_data <- sales_us %>%
-  left_join(average_sentiment, by = "title") # Adjust "title" if your column name is different
+# 6. auto printing to see the wrangled tibble data frame
+print(ts_album_average_sentiment)
+view(ts_album_average_sentiment)
+
+# 7. Join with the album sales data frame
+sales_us <- sales_us %>%
+  rename(Album = title)
+
+view(sales_us)
+
+# correcting reputation to Reputation
+ts_album_average_sentiment$Album <- 
+  replace(ts_album_average_sentiment$Album, ts_album_average_sentiment$Album == "reputation", "Reputation")
+
+# View to see if it worked
+view(ts_album_average_sentiment)
+
+# joining the data
+sales_us_joined <- sales_us %>%
+  inner_join(ts_album_average_sentiment, by = "Album") # Adjust "title" if your column name is different
 
 # Print the combined data frame
-print(combined_data)
-######## 7
-# Tokenizing lyrics by words while keeping album information
-ts_lyrics_tidy <- ts_lyrics %>%
-  unnest_tokens(
-    output = word,  # creates a new column 'word'
-    input = Lyrics, # the original lyrics
-    token = "words"
-  ) 
-#%>%
-  #select(album, word)  # Select the album column
+view(sales_us_joined)
 
-# Remove stopwords
-ts_lyrics_clean <- ts_lyrics_tidy %>%
-  anti_join(stop_words, by = "word")
+# 8. creating a plot of average sentiment score
+# converting the mdy to year only
+sales_us_joined <- sales_us_joined %>%
+  mutate(released_year = year(date))
 
-# Calculate total word counts per album and word
-word_counts_with_sentiment_ts <- ts_lyrics_clean %>%
-  count(album, word, sort = TRUE) %>%
-  left_join(get_sentiments("afinn"), by = "word") # Add sentiment scores
+view(sales_us_joined)
 
-# Ensure you keep the necessary columns after counting
-word_counts_with_sentiment_ts <- ts_lyrics_clean %>%
-  group_by(Album, word) %>% # Group by album and word
-  summarise(n = n(), .groups = 'drop') %>% # Count occurrences while keeping the grouping
-  left_join(get_sentiments("afinn"), by = "word") # Join with sentiment lexicon
+# creating scatter plot
+sales_us_joined_scatter <- ggplot(sales_us_joined,
+      aes(x=released_year,y= average_sentiment, size = sales_in_millions, label= Album))+
+  geom_point( alpha = 0.7)+
+  ylim(-1,1)+
+  labs(
+    title = "Taylor Swift's Lyrics Analyzed by Sentiment Scores \nand Sales by Album Release Date",
+    x = "Album Release Year",
+    y = "Average Sentiment Score",
+    size = "Sales (in millions)",
+    caption = "Data source: TidyTuesday"
+  ) +
+  theme_grey() +
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 11, face = "bold"),
+    legend.position = "right"
+    )
 
-# Print the resulting data frame
-print(word_counts_with_sentiment_ts)
+print(sales_us_joined_scatter)
 
+# 9. Adding a horizontal line at y-intercept=0
+sales_us_joined_scatter <- ggplot(sales_us_joined,
+                                  aes(x = released_year, y = average_sentiment, size = sales_in_millions, label = Album)) +
+  geom_point(alpha = 0.7) +
+  ylim(-1, 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  # Add horizontal line
+  labs(
+    title = "Taylor Swift's Lyrics Analyzed by Sentiment Scores \nand Sales by Album Release Date",
+    x = "Album Release Year",
+    y = "Average Sentiment Score",
+    size = "Sales (in millions)",
+    caption = "Data source: TidyTuesday"
+  ) +
+  theme_grey() +
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 11, face = "bold"),
+    legend.position = "right"
+  )
 
-# Now calculate the average sentiment for each album
-average_sentiment_per_album <- word_counts_with_sentiment %>%
-  group_by(album) %>%
-  summarise(average_sentiment = mean(value, na.rm = TRUE))  # Using 'value' for the sentiment score
+print(sales_us_joined_scatter)
 
-# Join with the album sales data frame (filtered for US sales)
-combined_data <- sales_us %>%
-  left_join(average_sentiment_per_album, by = "album") # Ensure you match on the correct column
+# 10. adding subtitle to interprete the plot
+sales_us_joined_scatter <- ggplot(sales_us_joined,
+                                  aes(x = released_year, y = average_sentiment, size = sales_in_millions, label = Album)) +
+  geom_point(alpha = 0.7) +
+  ylim(-1, 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +  # Add horizontal line
+  labs(
+    title = "Taylor Swift's Lyrics Analyzed by Sentiment Scores \nand Sales by Album Release Date",
+    subtitle = "Albums released before 2010 had average sentiment scores above 0 \nwith higher sales, but after 2010 most albums have average sentiment \nscores below 0 with comparatively less sales",
+    x = "Album Release Year",
+    y = "Average Sentiment Score",
+    size = "Sales (in millions)",
+    caption = "Data source: TidyTuesday"
+  ) +
+  theme_grey() +
+  theme(
+    plot.title = element_text(size = 13, face = "bold"),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 11, face = "bold"),
+    legend.position = "right"
+  )
 
-# Print the combined data frame
-print(combined_data)
-
-
-
-
-
-
-
-
+print(sales_us_joined_scatter)
 
